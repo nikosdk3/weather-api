@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const BASE_URL =
-  "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/";
+  "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline";
 
 app.get("/weather/:city", async (req, res) => {
   const city = req.params.city;
@@ -23,8 +23,8 @@ app.get("/weather/:city", async (req, res) => {
 
     const weather = {
       city: data.address,
-      temperature: `${data.temp} C`,
-      condition: data.currentConditions.condition,
+      temperature: `${data.currentConditions.temp} C`,
+      condition: data.currentConditions.conditions,
       humidity: `${data.currentConditions.humidity} %`,
     };
 
