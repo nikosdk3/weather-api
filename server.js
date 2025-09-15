@@ -1,13 +1,19 @@
 const express = require("express");
 const axios = require("axios");
 const redis = require("redis");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const BASE_URL =
-  "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline";
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 100,
+  message: { error: "Too many requests, please try again later." },
+});
+
+app.use(limiter);
 
 const client = redis.createClient({
   url: process.env.REDIS_URL,
@@ -18,6 +24,9 @@ client.on("error", (err) => console.error("Redis Client Error", err));
 (async () => {
   await client.connect();
 })();
+
+const BASE_URL =
+  "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline";
 
 app.get("/weather/:city", async (req, res) => {
   const city = req.params.city.toLowerCase();
@@ -40,6 +49,12 @@ app.get("/weather/:city", async (req, res) => {
       },
     });
 
+    if (!response.data || !response.data.currentConditions) {
+      return res
+        .status(404)
+        .json({ error: "City not found or data not available" });
+    }
+
     const data = response.data;
 
     const weather = {
@@ -56,6 +71,10 @@ app.get("/weather/:city", async (req, res) => {
     res.json(weather);
   } catch (error) {
     console.error(error.message);
+
+    if (error.response && error.response.status === 400) {
+      return res.status(400).json({ error: "Invalid city name" });
+    }
 
     res.status(500).json({
       error: "Failed to fetch weather data.",
